@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR 互動體驗</title>
+    <!-- 已更新為最新穩定版套件，解決 .mind 檔案版本衝突導致的白屏問題 -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    
+    <style>
+      body { margin: 0; overflow: hidden; }
+      #ui-container {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+      }
+      .action-btn {
+        background-color: #007AFF;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        display: none; /* 預設隱藏 */
+      }
+    </style>
+  </head>
+  
+  <body>
+    <div id="ui-container">
+      <button id="next-btn" class="action-btn">播放步驟二</button>
+    </div>
+
+    <!-- 綁定 target.mind -->
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+        <!-- 加入 preload="auto" 確保手機瀏覽器能順利載入影片，檔名大小寫已完全對應 -->
+        <video id="vid1" src="./B01.MP4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <video id="vid2" src="./B02.MP4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <video id="vid3" src="./B03.MP4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <video id="vid4" src="./B04.MP4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <video id="vid5" src="./B05.MP4" preload="auto" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
+        <a-video id="ar-vid1" src="#vid1" width="1" height="0.7" position="0 0 0" visible="true"></a-video>
+        <a-video id="ar-vid2" src="#vid2" width="1" height="0.7" position="0 0 0" visible="false"></a-video>
+        <a-video id="ar-vid3" src="#vid3" width="1" height="0.7" position="0 0 0" visible="false"></a-video>
+        <a-video id="ar-vid4" src="#vid4" width="1" height="0.7" position="0 0 0" visible="false"></a-video>
+        <a-video id="ar-vid5" src="#vid5" width="1" height="0.7" position="0 0 0" visible="false"></a-video>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // 確保網頁與 A-Frame 核心載入完畢後，再綁定按鈕與事件
+      document.addEventListener("DOMContentLoaded", function() {
+        const targetEntity = document.querySelector('#ar-target');
+        const nextBtn = document.querySelector('#next-btn');
+        
+        const vids = [
+          document.querySelector('#vid1'),
+          document.querySelector('#vid2'),
+          document.querySelector('#vid3'),
+          document.querySelector('#vid4'),
+          document.querySelector('#vid5')
+        ];
+        
+        const arVids = [
+          document.querySelector('#ar-vid1'),
+          document.querySelector('#ar-vid2'),
+          document.querySelector('#ar-vid3'),
+          document.querySelector('#ar-vid4'),
+          document.querySelector('#ar-vid5')
+        ];
+        
+        let currentStep = 0;
+
+        targetEntity.addEventListener("targetFound", event => {
+          nextBtn.style.display = "block";
+          vids[currentStep].play();
+        });
+
+        targetEntity.addEventListener("targetLost", event => {
+          nextBtn.style.display = "none";
+          vids.forEach(v => v.pause());
+        });
+
+        nextBtn.addEventListener('click', () => {
+          vids[currentStep].pause();
+          arVids[currentStep].setAttribute('visible', 'false');
+          
+          currentStep = (currentStep + 1) % 5;
+          
+          arVids[currentStep].setAttribute('visible', 'true');
+          vids[currentStep].currentTime = 0;
+          vids[currentStep].play();
+          
+          if (currentStep === 4) {
+            nextBtn.innerText = "重新開始";
+          } else {
+            nextBtn.innerText = `播放步驟 ${currentStep + 2}`;
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
