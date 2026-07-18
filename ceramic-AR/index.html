@@ -1,37 +1,124 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陶瓷修復 AR 體驗</title>
+    <!-- 引入 A-Frame 與 MindAR 官方穩定版腳本 -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-aframe.prod.js"></script>
+    
+    <style>
+      /* 網頁與相機畫面滿版 */
+      body { margin: 0; overflow: hidden; }
+      
+      /* 下方互動按鈕樣式 */
+      #ui-container {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+      }
+      .action-btn {
+        background-color: #007AFF;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        font-weight: bold;
+        display: none; /* 預設隱藏，抓到目標才顯示 */
+      }
+    </style>
+  </head>
+  
+  <body>
+    <!-- 互動按鈕 UI -->
+    <div id="ui-container">
+      <button id="next-btn" class="action-btn">碎片放置完成，開始修復</button>
+    </div>
 
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <!-- AR 場景設定：綁定你的 targets.mind 檔案 -->
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+        <!-- 這裡擺放你的影片與圖片資源，請確認檔名與路徑正確 -->
+        <video id="step1-video" src="./assets/step1.mp4" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <img id="step2-image" src="./assets/step2.png" crossorigin="anonymous">
+        <video id="step3-video" src="./assets/step3.mp4" loop="true" crossorigin="anonymous" playsinline webkit-playsinline></video>
+      </a-assets>
 
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-</head>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-<body>
+      <!-- 追蹤第一個底圖目標 (targetIndex: 0) -->
+      <a-entity id="ar-target" mindar-image-target="targetIndex: 0">
+        <!-- 步驟 1 的影片：預設顯示 -->
+        <a-video id="ar-video-1" src="#step1-video" width="1" height="0.7" position="0 0 0" visible="true"></a-video>
+        <!-- 步驟 2 的圖片：預設隱藏 -->
+        <a-image id="ar-img-2" src="#step2-image" width="1" height="0.7" position="0 0 0" visible="false"></a-image>
+        <!-- 步驟 3 的影片：預設隱藏 -->
+        <a-video id="ar-video-3" src="#step3-video" width="1" height="0.7" position="0 0 0" visible="false"></a-video>
+      </a-entity>
+    </a-scene>
 
-<a-scene
-  mindar-image="imageTargetSrc: ./assets/image/targets.mind;"
-  color-space="sRGB"
-  embedded
-  vr-mode-ui="enabled:false"
-  device-orientation-permission-ui="enabled:true">
+    <script>
+      const targetEntity = document.querySelector('#ar-target');
+      const nextBtn = document.querySelector('#next-btn');
+      
+      const video1 = document.querySelector('#step1-video');
+      const img2 = document.querySelector('#ar-img-2');
+      const video3 = document.querySelector('#step3-video');
+      
+      const arVideo1 = document.querySelector('#ar-video-1');
+      
+      let currentStep = 1;
 
-  <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+      // 偵測：當鏡頭「抓到」實體底圖時
+      targetEntity.addEventListener("targetFound", event => {
+        nextBtn.style.display = "block"; // 顯示按鈕
+        if (currentStep === 1) video1.play(); // 自動播放第一步影片
+        if (currentStep === 3) video3.play();
+      });
 
-  <a-entity mindar-image-target="targetIndex:0">
+      // 偵測：當鏡頭「移開」底圖時
+      targetEntity.addEventListener("targetLost", event => {
+        nextBtn.style.display = "none"; // 隱藏按鈕
+        video1.pause();
+        video3.pause();
+      });
 
-      <a-plane
-        color="red"
-        width="0.5"
-        height="0.5"
-        position="0 0 0">
-      </a-plane>
-
-  </a-entity>
-
-</a-scene>
-
-</body>
+      // 按鈕點擊邏輯切換（放置完成 -> 影片 -> 圖片 -> 影片）
+      nextBtn.addEventListener('click', () => {
+        if (currentStep === 1) {
+          // 進入第二步：顯示平面圖片，關閉第一步影片
+          video1.pause();
+          arVideo1.setAttribute('visible', 'false');
+          img2.setAttribute('visible', 'true');
+          
+          nextBtn.innerText = "下一步：最終上釉";
+          currentStep = 2;
+        } else if (currentStep === 2) {
+          // 進入第三步：顯示最後影片，關閉第二步圖片
+          img2.setAttribute('visible', 'false');
+          video3.play();
+          document.querySelector('#ar-video-3').setAttribute('visible', 'true');
+          
+          nextBtn.innerText = "重新修復";
+          currentStep = 3;
+        } else if (currentStep === 3) {
+          // 重設回到第一步
+          video3.pause();
+          document.querySelector('#ar-video-3').setAttribute('visible', 'false');
+          arVideo1.setAttribute('visible', 'true');
+          video1.currentTime = 0;
+          video1.play();
+          
+          nextBtn.innerText = "碎片放置完成，開始修復";
+          currentStep = 1;
+        }
+      });
+    </script>
+  </body>
 </html>
